@@ -1,5 +1,6 @@
 # Microsoft Azure SDK for Ruby
-[![Build Status](https://travis-ci.org/Azure/azure-sdk-for-ruby.png?branch=dev)](https://travis-ci.org/Azure/azure-sdk-for-ruby)
+## Fork taken February 2015 as no official release since May 2014.
+[![Build Status](https://travis-ci.org/stuartpreston/azure-sdk-for-ruby.png?branch=master)](https://travis-ci.org/stuartpreston/azure-sdk-for-ruby)
 
 
 This project provides a Ruby package that makes it easy to access and manage Microsoft Azure Services like Storage, Service Bus and Virtual Machines.
