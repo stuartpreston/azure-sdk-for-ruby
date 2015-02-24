@@ -34,6 +34,7 @@ This project provides a Ruby package that makes it easy to access and manage Mic
     * Virtual Machines
     * create linux based VMs and ssh with cert and key option enabled for ssh and WINRM (both http & https)enabled for windows based VMs
     * list, shut down, delete, find virtual machine deployments. While shutting down your VMs the provisioning state would be deallocated and this VM will not be included in the billing cycle.
+    * Create VM from a User (captured) image, adding new endpoints at deployment time
     * Create VM for a specific virtual network
 * Cloud Service Management
     * create, list, delete cloud services
