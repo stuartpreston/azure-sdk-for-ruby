@@ -136,14 +136,12 @@ module Azure
           options[:storage_account_name] ||= generate_storage_account_name(params[:vm_name])
           Azure::StorageManagementService.new.create_storage_account(options[:storage_account_name], optionals)
         end
-
         body = Serialization.deployment_to_xml(params, image, options)
         path = "/services/hostedservices/#{options[:cloud_service_name]}/deployments"
         Loggerx.info 'Deployment in progress...'
         request = ManagementHttpRequest.new(:post, path, body)
         request.call
         vm = get_virtual_machine(params[:vm_name], options[:cloud_service_name])
-
         # if this is a User image, a second call is required to set the endpoints, this is because
         # according to https://msdn.microsoft.com/en-us/library/azure/jj157186.aspx all 
         # ConfigurationSets parameters (including the NetworkConfiguration type) are ignored
@@ -152,7 +150,6 @@ module Azure
           Serialization.endpoints_from_xml(Nokogiri::XML(body), vm)
           update_endpoints(vm.vm_name, options[:cloud_service_name], vm.tcp_endpoints + vm.udp_endpoints)
         end
-
         vm
         rescue Exception => e
         e.message
