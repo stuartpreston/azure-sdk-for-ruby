@@ -108,7 +108,7 @@ module Azure
         options[:os_type] = image.os_type
         validate_deployment_params(params, options)
         options[:deployment_name] ||= options[:cloud_service_name]
-        Loggerx.info 'Creating deploymnent...'
+        Loggerx.info 'Creating deployment...'
         options[:cloud_service_name] ||= generate_cloud_service_name(params[:vm_name])        
         optionals = {}
         if options[:virtual_network_name]
@@ -136,14 +136,12 @@ module Azure
           options[:storage_account_name] ||= generate_storage_account_name(params[:vm_name])
           Azure::StorageManagementService.new.create_storage_account(options[:storage_account_name], optionals)
         end
+
         body = Serialization.deployment_to_xml(params, image, options)
         path = "/services/hostedservices/#{options[:cloud_service_name]}/deployments"
         Loggerx.info 'Deployment in progress...'
         request = ManagementHttpRequest.new(:post, path, body)
         request.call
-        #get_virtual_machine(params[:vm_name], options[:cloud_service_name])
-        #rescue Exception => e
-        #e.message
         vm = get_virtual_machine(params[:vm_name], options[:cloud_service_name])
 
         # if this is a User image, a second call is required to set the endpoints, this is because

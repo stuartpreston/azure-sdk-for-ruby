@@ -84,16 +84,6 @@ module Azure
             xml.RoleName { xml.text params[:vm_name] }
             xml.OsVersion('i:nil' => 'true')
             xml.RoleType 'PersistentVMRole'
-
-            if image.category == 'User'
-              xml.VMImageName params[:image]
-            else
-              xml.OSVirtualHardDisk do
-                xml.MediaLink 'http://' + storage_host + '/vhds/' + (Time.now.strftime('disk_%Y_%m_%d_%H_%M')) + '.vhd'
-                xml.SourceImageName params[:image]
-              end
-            end
-
             xml.ConfigurationSets do
               provisioning_configuration_to_xml(xml, params, options)
               xml.ConfigurationSet('i:type' => 'NetworkConfigurationSet') do
@@ -116,6 +106,16 @@ module Azure
             xml.AvailabilitySetName options[:availability_set_name]
             xml.Label Base64.encode64(params[:vm_name]).strip
             storage_host = options[:storage_account_name] + '.blob.core.windows.net'
+            
+            if image.category == 'User'
+              xml.VMImageName params[:image]
+            else
+              xml.OSVirtualHardDisk do
+                xml.MediaLink 'http://' + storage_host + '/vhds/' + (Time.now.strftime('disk_%Y_%m_%d_%H_%M')) + '.vhd'
+                xml.SourceImageName params[:image]
+              end
+            end
+
             xml.RoleSize options[:vm_size]
           end
         end
