@@ -19,7 +19,7 @@ module Azure
         yield self if block_given?
       end
 
-      attr_accessor :os_type, :name, :category, :locations
+      attr_accessor :os_type, :name, :category, :media_link, :locations
     end
   end
 end

@@ -51,7 +51,7 @@ module Azure
       #
       # Returns an  Azure::VirtualMachineManagement::VirtualMachine instance.
       def get_virtual_machine(name, cloud_service_name)
-        server = list_virtual_machines(cloud_service_name).select { |x| x.vm_name == name.downcase }
+        server = list_virtual_machines(cloud_service_name).select { |x| x.vm_name.casecmp(name) == 0 }
         server.first
       end
 
@@ -61,6 +61,7 @@ module Azure
       #
       # * +params+    - Hash.  parameters.
       # * +options+   - Hash.  Optional parameters.
+      # * +add_role+  - true/false. Optional Parameter. Default is false
       #
       #  ==== Params
       #
@@ -90,18 +91,25 @@ module Azure
       # * +:winrm_transport+          - Array. Specifies WINRM transport protocol.
       # * +:availability_set_name+    - String. Specifies the availability set name.
       #
+      #  ==== add_role
+      #
+      # Accepted values are:
+      # * +false+   - Will add a new deployment in a cloud service.
+      # * +true+    - Will add a new role to a cloud service. Atleast one
+      # deployment should exist before you can add a role.
+      #
       # Returns Azure::VirtualMachineManagement::VirtualMachine objects of newly created instance.
       #
       # See:
       # http://msdn.microsoft.com/en-us/library/windowsazure/jj157194.aspx
       # http://msdn.microsoft.com/en-us/library/windowsazure/jj157186.aspx
       def create_virtual_machine(params, options = {})
-        options[:os_type] = get_os_type(params[:image])
+        image = get_image(params[:image])
+        options[:os_type] = image.os_type
         validate_deployment_params(params, options)
         options[:deployment_name] ||= options[:cloud_service_name]
         Loggerx.info 'Creating deploymnent...'
-        options[:cloud_service_name] ||= generate_cloud_service_name(params[:vm_name])
-        options[:storage_account_name] ||= generate_storage_account_name(params[:vm_name])
+        options[:cloud_service_name] ||= generate_cloud_service_name(params[:vm_name])        
         optionals = {}
         if options[:virtual_network_name]
           virtual_network_service = Azure::VirtualNetworkManagementService.new
@@ -109,7 +117,12 @@ module Azure
           if virtual_networks.empty?
             Loggerx.error_with_exit "Virtual network #{options[:virtual_network_name]} doesn't exists"
           else
-            optionals[:affinity_group_name] = virtual_networks.first.affinity_group
+            vnet = virtual_networks.first
+            if !vnet.affinity_group.empty?
+              options[:affinity_group_name] = vnet.affinity_group
+            else
+              optionals[:location] = vnet.location
+            end
           end
         elsif options[:affinity_group_name]
           optionals[:affinity_group_name] = options[:affinity_group_name]
@@ -119,14 +132,31 @@ module Azure
         cloud_service = Azure::CloudServiceManagementService.new
         cloud_service.create_cloud_service(options[:cloud_service_name], optionals)
         cloud_service.upload_certificate(options[:cloud_service_name], params[:certificate]) unless params[:certificate].empty?
-        Azure::StorageManagementService.new.create_storage_account(options[:storage_account_name], optionals)
-        body = Serialization.deployment_to_xml(params, options)
+        unless image.category == 'User'
+          options[:storage_account_name] ||= generate_storage_account_name(params[:vm_name])
+          Azure::StorageManagementService.new.create_storage_account(options[:storage_account_name], optionals)
+        end
+        body = Serialization.deployment_to_xml(params, image, options)
         path = "/services/hostedservices/#{options[:cloud_service_name]}/deployments"
         Loggerx.info 'Deployment in progress...'
         request = ManagementHttpRequest.new(:post, path, body)
         request.call
-        get_virtual_machine(params[:vm_name], options[:cloud_service_name])
-      rescue Exception => e
+        #get_virtual_machine(params[:vm_name], options[:cloud_service_name])
+        #rescue Exception => e
+        #e.message
+        vm = get_virtual_machine(params[:vm_name], options[:cloud_service_name])
+
+        # if this is a User image, a second call is required to set the endpoints, this is because
+        # according to https://msdn.microsoft.com/en-us/library/azure/jj157186.aspx all 
+        # ConfigurationSets parameters (including the NetworkConfiguration type) are ignored
+        # when the VMImageName is set 
+        if image.category == 'User'
+          Serialization.endpoints_from_xml(Nokogiri::XML(body), vm)
+          update_endpoints(vm.vm_name, options[:cloud_service_name], vm.tcp_endpoints + vm.udp_endpoints)
+        end
+
+        vm
+        rescue Exception => e
         e.message
       end
 
@@ -165,7 +195,8 @@ module Azure
       # See:
       # http://msdn.microsoft.com/en-us/library/windowsazure/jj157186.aspx
       def add_role(params, options = {})
-        options[:os_type] = get_os_type(params[:image])
+        image = get_image(params[:image])
+        options[:os_type] = image.os_type
         validate_deployment_params(params, options, true)
         cloud_service = Azure::CloudServiceManagementService.new
         cloud_service = cloud_service.get_cloud_service_properties(params[:cloud_service_name])
@@ -177,8 +208,10 @@ module Azure
         elsif cloud_service.affinity_group
           others[:affinity_group_name] = cloud_service.affinity_group
         end
-        options[:storage_account_name] ||= generate_storage_account_name(params[:vm_name])
-        Azure::StorageManagementService.new.create_storage_account(options[:storage_account_name], others)
+        unless image.category == 'User'
+          options[:storage_account_name] ||= generate_storage_account_name(params[:vm_name])
+          Azure::StorageManagementService.new.create_storage_account(options[:storage_account_name], others)
+        end
         Loggerx.info 'Deployment exists, adding role...'
         existing_ports = []
         cloud_service.virtual_machines[deployment_name.to_sym].each do |vm|
@@ -187,12 +220,26 @@ module Azure
           end
         end
         options[:existing_ports] = existing_ports
-        body = Serialization.role_to_xml(params, options).to_xml
+        body = Serialization.role_to_xml(params, image, options).to_xml
         path = "/services/hostedservices/#{cloud_service.name}/deployments/#{deployment_name}/roles"
         Loggerx.info 'Deployment in progress...'
         request = ManagementHttpRequest.new(:post, path, body)
         request.call
-        get_virtual_machine(params[:vm_name], cloud_service.name)
+      
+        vm = get_virtual_machine(params[:vm_name], cloud_service.name)
+
+        # if this is a User image, a second call is required to set the endpoints, this is because
+        # according to https://msdn.microsoft.com/en-us/library/azure/jj157186.aspx all 
+        # ConfigurationSets parameters (including the NetworkConfiguration type) are ignored
+        # when the VMImageName is set 
+        if image.category == 'User'
+          Serialization.endpoints_from_xml(Nokogiri::XML(body), vm)
+          update_endpoints(vm.vm_name, cloud_service.name, vm.tcp_endpoints + vm.udp_endpoints)
+        end
+
+        vm
+        rescue Exception => e
+        e.message
       end
 
       # Public: Deletes the deployment, cloud service and disk.
@@ -454,11 +501,11 @@ module Azure
       # Private: Gets the operating system type of an image.
       #
       # Returns Linux or Windows
-      def get_os_type(image_name)
+      def get_image(image_name)
         image_service = Azure::VirtualMachineImageManagementService.new
-        image = image_service.list_virtual_machine_images.select { |x| x.name == image_name }.first
+        image = image_service.list_virtual_machine_images.select { |x| x.name.casecmp(image_name.to_s) == 0 }.first
         Loggerx.error_with_exit 'The virtual machine image source is not valid.' unless image
-        image.os_type
+        image
       end
 
       def generate_cloud_service_name(vm_name)

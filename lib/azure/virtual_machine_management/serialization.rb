@@ -55,7 +55,7 @@ module Azure
         builder.doc.to_xml
       end
 
-      def self.deployment_to_xml(params, options)
+      def self.deployment_to_xml(params, image, options)
         options[:deployment_name] ||= options[:cloud_service_name]
         builder = Nokogiri::XML::Builder.new do |xml|
           xml.Deployment(
@@ -71,11 +71,11 @@ module Azure
             end
           end
         end
-        builder.doc.at_css('Role') << role_to_xml(params, options).at_css('PersistentVMRole').children.to_s
+        builder.doc.at_css('Role') << role_to_xml(params, image, options).at_css('PersistentVMRole').children.to_s
         builder.doc.to_xml
       end
 
-      def self.role_to_xml(params, options)
+      def self.role_to_xml(params, image, options)
         builder = Nokogiri::XML::Builder.new do |xml|
           xml.PersistentVMRole(
             'xmlns' => 'http://schemas.microsoft.com/windowsazure',
@@ -84,6 +84,15 @@ module Azure
             xml.RoleName { xml.text params[:vm_name] }
             xml.OsVersion('i:nil' => 'true')
             xml.RoleType 'PersistentVMRole'
+
+            if image.category == 'User'
+              xml.VMImageName params[:image]
+            else
+              xml.OSVirtualHardDisk do
+                xml.MediaLink 'http://' + storage_host + '/vhds/' + (Time.now.strftime('disk_%Y_%m_%d_%H_%M')) + '.vhd'
+                xml.SourceImageName params[:image]
+              end
+            end
 
             xml.ConfigurationSets do
               provisioning_configuration_to_xml(xml, params, options)
@@ -106,10 +115,7 @@ module Azure
             end
             xml.AvailabilitySetName options[:availability_set_name]
             xml.Label Base64.encode64(params[:vm_name]).strip
-            xml.OSVirtualHardDisk do
-              xml.MediaLink 'http://' + options[:storage_account_name] + '.blob.core.windows.net/vhds/' + (Time.now.strftime('disk_%Y_%m_%d_%H_%M_%S_%L')) + '.vhd'
-              xml.SourceImageName params[:image]
-            end
+            storage_host = options[:storage_account_name] + '.blob.core.windows.net'
             xml.RoleSize options[:vm_size]
           end
         end
@@ -143,6 +149,7 @@ module Azure
                 end
               end
             end
+            add_custom_data(xml, options)
           end
         elsif options[:os_type] == 'Windows'
           xml.ConfigurationSet('i:type' => 'WindowsProvisioningConfigurationSet') do
@@ -169,7 +176,18 @@ module Azure
               end
             end
             xml.AdminUsername params[:vm_user]
+            add_custom_data(xml, options)
           end
+        end
+      end
+
+      def self.add_custom_data(xml, options)
+        if options[:custom_data]
+          custom_data = options[:custom_data]
+          unless custom_data.resembles_base64?
+            custom_data = Base64.encode64(custom_data) 
+          end
+          xml.CustomData custom_data
         end
       end
 
@@ -177,7 +195,7 @@ module Azure
         os_type = options[:os_type]
         used_ports = options[:existing_ports]
         endpoints = []
-        if os_type == 'Linux'
+        if os_type == 'Linux' && !options[:no_ssh_endpoint]
           preferred_port = '22'
           port_already_opened?(used_ports, options[:ssh_port])
           endpoints << {
@@ -248,13 +266,15 @@ module Azure
             vm = VirtualMachine.new
             role_name = xml_content(instance, 'RoleName')
             vm.status = xml_content(instance, 'InstanceStatus')
-            vm.vm_name = role_name.downcase
+            vm.vm_name = role_name
             vm.ipaddress = xml_content(ip, 'Address')
+            vm.private_ipaddress = xml_content(instance, 'IpAddress')
             vm.role_size = xml_content(instance, 'InstanceSize')
             vm.hostname = xml_content(instance, 'HostName')
-            vm.cloud_service_name = cloud_service_name.downcase
+            vm.cloud_service_name = cloud_service_name
             vm.deployment_name = xml_content(deployXML, 'Deployment Name')
             vm.deployment_status = xml_content(deployXML, 'Deployment Status')
+            vm.virtual_network_subnet_name = xml_content(deployXML, 'SubnetName')
             vm.virtual_network_name = xml_content(
               deployXML.css('Deployment'),
               'VirtualNetworkName'
@@ -264,6 +284,10 @@ module Azure
                 vm.availability_set_name = xml_content(role, 'AvailabilitySetName')
                 endpoints_from_xml(role, vm)
                 vm.data_disks = data_disks_from_xml(role)
+                subnet = xml_content(role,
+                  'ConfigurationSets ConfigurationSet SubnetNames SubnetName'
+                )
+                vm.subnet = subnet unless subnet.empty?
                 vm.os_type = xml_content(role, 'OSVirtualHardDisk OS')
                 vm.disk_name = xml_content(role, 'OSVirtualHardDisk DiskName')
                 vm.media_link = xml_content(role, 'OSVirtualHardDisk MediaLink')
@@ -291,9 +315,10 @@ module Azure
         data_disks
       end
 
-      def self.endpoints_from_xml(rolesXML, vm)
+      def self.endpoints_from_xml(rolesXML, vm)        
         vm.tcp_endpoints = []
         vm.udp_endpoints = []
+
         endpoints = rolesXML.css('ConfigurationSets ConfigurationSet InputEndpoints InputEndpoint')
         endpoints.each do |endpoint|
           lb_name = xml_content(endpoint, 'LoadBalancedEndpointSetName')
@@ -346,6 +371,9 @@ module Azure
                 xml.ConfigurationSetType 'NetworkConfiguration'
                 xml.InputEndpoints do
                   endpoints_to_xml(xml, endpoints)
+                end
+                xml.SubnetNames do
+                  xml.SubnetName vm.subnet if vm.subnet
                 end
               end
             end
