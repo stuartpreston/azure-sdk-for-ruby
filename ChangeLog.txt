@@ -1,3 +1,16 @@
+2014.03.12 - version 0.6.7 (stuartpreston-azure-sdk-for-ruby)
+* Support for .pfx and .publishsettings as certificate sources
+
+2014.03.09 - version 0.6.6 (stuartpreston-azure-sdk-for-ruby)
+* Support for A10 and A11 Virtual Machine role sizes
+
+2013.03.03 - version 0.6.5 (stuartpreston-azure-sdk-for-ruby)
+* Support for D, DS and G Virtual Machine role sizes
+* Disabling Ruby 1.9 incompatibilities
+* Fix serialization for Add Role/Create Virtual Machines
+* Support creation of VM roles from User images
+* Fix to support endpoint creation when User image used
+
 2014.05.06 - version 0.6.4
 * Upgraded Service Management Versioning to 2014-04-01
 * Created separate API for add role
