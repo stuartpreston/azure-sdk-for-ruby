@@ -31,13 +31,28 @@ module Azure
     class BaseManagementService
       def initialize
         validate_configuration
-        cert_file = File.read(Azure.config.management_certificate)
+        cert_file = nil
         begin
           if Azure.config.management_certificate =~ /(pem)$/
+            cert_file = File.read(Azure.config.management_certificate)
             certificate_key = OpenSSL::X509::Certificate.new(cert_file)
             private_key = OpenSSL::PKey::RSA.new(cert_file)
-          else
-          # Parse pfx content
+          elsif Azure.config.management_certificate =~ /(pfx)$/
+            # Parse pfx content
+            File.open(Azure.config.management_certificate, "rb") do |f|
+                cert_file = f.read
+            end
+            cert_content = OpenSSL::PKCS12.new(Base64.decode64(cert_file))
+            certificate_key = OpenSSL::X509::Certificate.new(
+              cert_content.certificate.to_pem
+            )
+            private_key = OpenSSL::PKey::RSA.new(cert_content.key.to_pem)
+          elsif Azure.config.management_certificate =~ /(publishsettings)$/
+            # Parse publishsettings content
+            publish_settings = Nokogiri::XML(File.open(Azure.config.management_certificate, "r"))
+            subscription_id = Azure.config.subscription_id
+            xpath = "//PublishData/PublishProfile/Subscription[@Id='#{subscription_id}']/@ManagementCertificate"
+            cert_file = publish_settings.xpath(xpath).text
             cert_content = OpenSSL::PKCS12.new(Base64.decode64(cert_file))
             certificate_key = OpenSSL::X509::Certificate.new(
               cert_content.certificate.to_pem
@@ -68,8 +83,8 @@ module Azure
         raise error_message unless test('r', m_cert)
 
         m_cert = Azure.config.management_certificate
-        error_message = 'Management certificate expects a .pem or .pfx file.'
-        raise error_message unless m_cert =~ /(pem|pfx)$/
+        error_message = 'Management certificate expects a .pem, .pfx or .publishsettings file.'
+        raise error_message unless m_cert =~ /(pem|pfx|publishsettings)$/
       end
 
       # Public: Gets a list of regional data center locations from the server
