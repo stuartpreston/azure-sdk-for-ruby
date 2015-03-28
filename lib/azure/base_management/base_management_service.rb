@@ -31,38 +31,7 @@ module Azure
     class BaseManagementService
       def initialize
         validate_configuration
-        cert_file = nil
-        begin
-          if Azure.config.management_certificate =~ /(pem)$/
-            cert_file = File.read(Azure.config.management_certificate)
-            certificate_key = OpenSSL::X509::Certificate.new(cert_file)
-            private_key = OpenSSL::PKey::RSA.new(cert_file)
-          elsif Azure.config.management_certificate =~ /(pfx)$/
-            # Parse pfx content
-            File.open(Azure.config.management_certificate, "rb") do |f|
-                cert_file = f.read
-            end
-            cert_content = OpenSSL::PKCS12.new(Base64.decode64(cert_file))
-            certificate_key = OpenSSL::X509::Certificate.new(
-              cert_content.certificate.to_pem
-            )
-            private_key = OpenSSL::PKey::RSA.new(cert_content.key.to_pem)
-          elsif Azure.config.management_certificate =~ /(publishsettings)$/
-            # Parse publishsettings content
-            publish_settings = Nokogiri::XML(File.open(Azure.config.management_certificate, "r"))
-            subscription_id = Azure.config.subscription_id
-            xpath = "//PublishData/PublishProfile/Subscription[@Id='#{subscription_id}']/@ManagementCertificate"
-            cert_file = publish_settings.xpath(xpath).text
-            cert_content = OpenSSL::PKCS12.new(Base64.decode64(cert_file))
-            certificate_key = OpenSSL::X509::Certificate.new(
-              cert_content.certificate.to_pem
-            )
-            private_key = OpenSSL::PKey::RSA.new(cert_content.key.to_pem)
-          end
-        rescue Exception => e
-          raise "Management certificate not valid. Error: #{e.message}"
-        end
-
+        certificate_key, private_key = read_management_certificate(Azure.config.management_certificate)
         Azure.configure do |config|
           config.http_certificate_key = certificate_key
           config.http_private_key = private_key
@@ -79,12 +48,43 @@ module Azure
         raise error_message if m_ep.nil? || m_ep.empty?
 
         m_cert = Azure.config.management_certificate
-        error_message = "Could not read from file '#{m_cert}'."
-        raise error_message unless test('r', m_cert)
+        if m_cert.is_a?(Hash)
+           error_message = "Management certificate hash #{m_cert} does not have key :type!  If specifying a hash, you must specify :type => <:pem, :pdx or :publishsettings>!"
+           raise error_message unless m_cert.has_key?(:type) && %w(pem pdx publishsettings).include?(m_cert[:type].to_s)
 
-        m_cert = Azure.config.management_certificate
-        error_message = 'Management certificate expects a .pem, .pfx or .publishsettings file.'
-        raise error_message unless m_cert =~ /(pem|pfx|publishsettings)$/
+           error_message = "Management certificate hash #{m_cert} does not have the certificate data!  If specifying a hash, you must specify either :data => String, :io => <IO object> or :path => <path>!"
+           raise error_message unless [ :data, :io, :path ].any? { |k| m_cert.has_key?(k) }
+
+           unexpected_keys = m_cert.keys - [ :type, :data, :io, :path ]
+           error_message = "Management certificate hash #{m_cert} has unexpected keys #{unexpected_keys.join(", ")}!  Only :type, :data, :io and :path are accepted values when specifying a hash."
+           raise error_message unless unexpected_keys.empty?
+
+           if m_cert[:data]
+             error_message= "Management certificate :data in #{m_cert} is not a String!  Must be a String."
+             raise error_message unless m_cert[:data].is_a?(String)
+           end
+           if m_cert[:io]
+             error_message= "Management certificate :io in #{m_cert} is not an IO object!  Must be an IO object."
+             raise error_message unless m_cert[:io].is_a?(IO)
+           end
+           if m_cert[:path]
+             error_message= "Management certificate :path in #{m_cert} is not a String!  Must be a String."
+             raise error_message unless m_cert[:path].is_a?(String)
+             unless m_cert[:data] || m_cert[:io] # :path is only used to print information out if data or IO is there
+               error_message = "Could not read from file '#{m_cert[:path]}'."
+               raise error_message unless test('r', m_cert[:data])
+             end
+           end
+
+        else
+           m_cert_ext = File.ext(m_cert)
+           error_message = "Management certificate path '#{m_cert}' must have extension .pem, .pfx or .publishsettings"
+           raise error_message unless %w(pem pfx publishsettings).include?(m_cert_ext)
+
+           error_message = "Could not read from file '#{m_cert}'."
+           raise error_message unless test('r', m_cert)
+        end
+
       end
 
       # Public: Gets a list of regional data center locations from the server
@@ -243,6 +243,61 @@ module Azure
                   " Allowed values are #{locations.join(',')}"
           raise error
         end
+      end
+
+      def read_management_certificate(cert)
+        cert_file = nil
+        begin
+          # If it's a String, the type is the extension (.pem, .pfx, .publishsettings)
+          if cert.is_a?(String)
+            cert = {
+              type: File.ext(cert),
+              path: cert
+            }
+          end
+
+          case cert[:type].to_sym
+          when :pem
+            read_pem(cert)
+          when :pfx
+            read_pfx(cert)
+          when :publishsettings
+            read_publishsettings(cert)
+          else
+            raise ArgumentError, "Unknown type #{type} on Azure.config.management_certificate #{cert}"
+          end
+        end
+      end
+
+      def read_pem(cert)
+        cert[:data] ||= cert[:io] ? cert[:io].read : File.open(cert[:path], "r") { |f| f.read }
+
+        certificate_key = OpenSSL::X509::Certificate.new(cert[:data])
+        private_key = OpenSSL::PKey::RSA.new(cert[:data])
+        [ certificate_key, private_key ]
+      end
+
+      def read_pfx(cert)
+        cert[:data] ||= cert[:io] ? cert[:io].read : File.open(cert[:path], "rb") { |f| f.read }
+
+        cert_content = OpenSSL::PKCS12.new(Base64.decode64(cert[:data]))
+        certificate_key = OpenSSL::X509::Certificate.new(
+          cert_content.certificate.to_pem
+        )
+        private_key = OpenSSL::PKey::RSA.new(cert_content.key.to_pem)
+        [ certificate_key, private_key ]
+      end
+
+      def read_publishsettings(cert)
+        cert[:io] ||= cert[:data] ? StringIO.new(cert[:data]) : File.open(cert[:path], "r")
+
+        # Parse publishsettings content
+        publish_settings = Nokogiri::XML(cert[:io])
+        subscription_id = Azure.config.subscription_id
+        xpath = "//PublishData/PublishProfile/Subscription[@Id='#{subscription_id}']/@ManagementCertificate"
+        cert_file = publish_settings.xpath(xpath).text
+
+        read_pfx(data: cert_file, path: cert[:path])
       end
     end
   end
