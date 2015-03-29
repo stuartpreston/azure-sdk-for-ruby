@@ -49,8 +49,8 @@ module Azure
 
         m_cert = Azure.config.management_certificate
         if m_cert.is_a?(Hash)
-           error_message = "Management certificate hash #{m_cert} does not have key :type!  If specifying a hash, you must specify :type => <:pem, :pdx or :publishsettings>!"
-           raise error_message unless m_cert.has_key?(:type) && %w(pem pdx publishsettings).include?(m_cert[:type].to_s)
+           error_message = "Management certificate hash #{m_cert} does not have key :type!  If specifying a hash, you must specify :type => <:pem, :pfx or :publishsettings>!"
+           raise error_message unless m_cert.has_key?(:type) && %w(pem pfx publishsettings).include?(m_cert[:type].to_s)
 
            error_message = "Management certificate hash #{m_cert} does not have the certificate data!  If specifying a hash, you must specify either :data => String, :io => <IO object> or :path => <path>!"
            raise error_message unless [ :data, :io, :path ].any? { |k| m_cert.has_key?(k) }
