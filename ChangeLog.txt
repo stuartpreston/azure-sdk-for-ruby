@@ -1,3 +1,6 @@
+2014.03.29 - version 0.6.8 (stuartpreston-azure-sdk-for-ruby) (@jkeiser)
+* Support for accepting certificates in memory
+
 2014.03.12 - version 0.6.7 (stuartpreston-azure-sdk-for-ruby)
 * Support for .pfx and .publishsettings as certificate sources
 

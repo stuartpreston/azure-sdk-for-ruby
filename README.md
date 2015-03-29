@@ -1,9 +1,14 @@
-# Microsoft Azure SDK for Ruby
-## Fork taken February 2015 as no official release since May 2014.
+# Microsoft Azure SDK for Ruby (gem: stuartpreston-azure-sdk-for-ruby)
+This is a fork of the 'official' Azure SDK for Ruby which was taken in February 2015 due to there being no official releases since May 2014.
+
 [![Build Status](https://travis-ci.org/stuartpreston/azure-sdk-for-ruby.png?branch=master)](https://travis-ci.org/stuartpreston/azure-sdk-for-ruby)
 
+Please view the [changelog](changelog.txt) for an up to date list of what is supported.
 
+### 
 This project provides a Ruby package that makes it easy to access and manage Microsoft Azure Services like Storage, Service Bus and Virtual Machines.
+
+This package accesses the Microsoft Azure Service Management API, and ***not*** the Microsoft Azure Resource Management API.
 
 # Library Features
 * Storage
@@ -51,10 +56,7 @@ This project provides a Ruby package that makes it easy to access and manage Mic
 
 # Supported Ruby Versions
 
-* Ruby 1.9.3
 * Ruby 2.0
-
-**Notice** that Ruby 2.0 x64 on Windows is not supported due to the [lack of nokogiri](https://github.com/sparklemotion/nokogiri/issues/864).
 
 # Getting Started
 
@@ -71,7 +73,7 @@ gem install azure
 To get the source code of the SDK via **git** just type:
 
 ```bash
-git clone https://github.com/Azure/azure-sdk-for-ruby.git
+git clone https://github.com/stuartpreston/azure-sdk-for-ruby.git
 cd ./azure-sdk-for-ruby
 ```
 Then, run bundler to install all the gem dependencies:
@@ -519,7 +521,7 @@ base_management_service.get_affinity_group('affinity-group-name')
 require 'azure'
 
 Azure.configure do |config|
-  config.management_certificate = "path to *.pem or *.pfx file"
+  config.management_certificate = "path to .pem, .pfx or .publishsettings file"
   config.subscription_id        = "your subscription id"
   config.management_endpoint    = "https://management.database.windows.net:8443/"
 #To access other service management apis use "https://management.core.windows.net".
@@ -589,7 +591,7 @@ vnet.set_network_configuration(vnetxml)
 
 # Useful commands for certificate operations
 
-Currently the sdk supports *.pem or *.pfx (passwordless pfx) for service management operations. Following are the steps discussed on various cert operations.
+Currently the sdk supports .pem, .pfx or .publishsettings for service management operations. Following are the steps discussed on various cert operations.
 
 * To create pfx, simply download the publishsettings file for your subscription, copy the contents of Management Certificate from the publishsettings and save it in a file and name the file as your cert.pfx. This pfx will be a passwordless pfx which can be supplied as a cert parameter for Service Management Commands
 * Using the following openssl commands to extract the pem file and pass the pem file as management cert parameter.
@@ -607,7 +609,7 @@ Be sure to check out the Microsoft Azure [Developer Forums on Stack Overflow and
 # Contribute Code or Provide Feedback
 
 If you would like to become an active contributor to this project please follow the instructions provided in [Microsoft Azure Projects Contribution Guidelines](http://windowsazure.github.com/guidelines.html).
-If you encounter any bugs with the library please file an issue in the [Issues](https://github.com/Azure/azure-sdk-for-ruby/issues) section of the project.
+If you encounter any bugs with the library please file an issue in the [Issues](https://github.com/stuartpreston/azure-sdk-for-ruby/issues) section of the project.
 
 # Learn More
 
