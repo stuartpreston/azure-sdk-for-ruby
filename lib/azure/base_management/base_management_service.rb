@@ -77,9 +77,9 @@ module Azure
            end
 
         else
-           m_cert_ext = File.ext(m_cert)
+           m_cert_ext = File.extname(m_cert)
            error_message = "Management certificate path '#{m_cert}' must have extension .pem, .pfx or .publishsettings"
-           raise error_message unless %w(pem pfx publishsettings).include?(m_cert_ext)
+           raise error_message unless %w(.pem .pfx .publishsettings).include?(m_cert_ext)
 
            error_message = "Could not read from file '#{m_cert}'."
            raise error_message unless test('r', m_cert)
@@ -251,7 +251,7 @@ module Azure
           # If it's a String, the type is the extension (.pem, .pfx, .publishsettings)
           if cert.is_a?(String)
             cert = {
-              type: File.ext(cert),
+              type: File.extname(cert).split('.').last,
               path: cert
             }
           end
