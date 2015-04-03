@@ -20,7 +20,7 @@ Gem::Specification.new do |s|
   s.name    = "stuartpreston-azure-sdk-for-ruby"
   s.version = Azure::Version
 
-  s.authors     = ["Microsoft Corporation", "AppFog", "Pendrica"]
+  s.authors     = ["Microsoft Corporation", "Pendrica"]
   s.email       = "stuart@pendrica.com"
   s.description = "Microsoft Azure Client Library for Ruby"
   s.summary     = "Ruby client library to consume Microsoft Azure services."
@@ -31,7 +31,7 @@ Gem::Specification.new do |s|
   s.required_ruby_version = '>= 2.0'
 
   s.add_runtime_dependency('nokogiri',   "~> 1.5")
-  s.add_runtime_dependency("mime-types", "~> 1.0")
+  s.add_runtime_dependency("mime-types", "~> 2.0")
   s.add_runtime_dependency('json', '~> 1.8')
   s.add_runtime_dependency('uuid', '~> 2.0')
   s.add_runtime_dependency('systemu', '~> 2.6')
