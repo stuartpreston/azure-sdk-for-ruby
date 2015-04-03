@@ -1,4 +1,7 @@
-2014.03.30 - version 0.6.9 (stuartpreston-azure-sdk-for-ruby) 
+2014.04.03 - version 0.7.0 (stuartpreston-azure-sdk-for-ruby)
+* Update dependencies for compatibility with latest chef-client and chef-provisioning
+
+2014.03.30 - version 0.6.9 (stuartpreston-azure-sdk-for-ruby)
 * Implement fixes for regression issues with filename handling
 
 2014.03.29 - version 0.6.8 (stuartpreston-azure-sdk-for-ruby)
@@ -16,6 +19,8 @@
 * Fix serialization for Add Role/Create Virtual Machines
 * Support creation of VM roles from User images
 * Fix to support endpoint creation when User image used
+
+--- forked here ^^^
 
 2014.05.06 - version 0.6.4
 * Upgraded Service Management Versioning to 2014-04-01
