@@ -41,6 +41,10 @@ module Azure
             virtual_network_service_xml,
             'State'
           )
+          virtual_network.location = xml_content(
+            virtual_network_service_xml,
+            'Location'
+          )
           address_prefixes = virtual_network_service_xml.css(
             'AddressSpace AddressPrefixes AddressPrefix'
           )
@@ -164,7 +168,7 @@ module Azure
         dns_list = {}
         dns_list.merge!(merge_dns(new_dns_servers))
         dns_list.merge!(merge_dns(dns_servers))
-        
+
         dns_list.each do |name, ip_address|
           xml.DnsServer('name' => name, 'IPAddress' => ip_address)
         end
@@ -172,7 +176,7 @@ module Azure
 
       def self.merge_dns(dns_list)
         new_dns_list = {}
-        
+
         dns_list.each do |dns|
           unless dns_list.include?(dns[:name])
             new_dns_list.merge!(dns[:name] => dns[:ip_address])

@@ -1,3 +1,7 @@
+
+2014.04.13 - version 0.7.1 (stuartpreston-azure-sdk-for-ruby)
+* Fix inability to determine location of virtual network
+
 2014.04.03 - version 0.7.0 (stuartpreston-azure-sdk-for-ruby)
 * Update dependencies for compatibility with latest chef-client and chef-provisioning
 
