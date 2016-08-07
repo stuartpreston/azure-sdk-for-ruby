@@ -1,23 +1,25 @@
+2016.08.07 - version 0.7.2 (stuartpreston-azure-sdk-for-ruby)
+* Support for 1.x and 3.x mime-types library (@jkeiser)
 
-2014.04.13 - version 0.7.1 (stuartpreston-azure-sdk-for-ruby)
+2015.04.13 - version 0.7.1 (stuartpreston-azure-sdk-for-ruby)
 * Fix inability to determine location of virtual network
 
-2014.04.03 - version 0.7.0 (stuartpreston-azure-sdk-for-ruby)
+2015.04.03 - version 0.7.0 (stuartpreston-azure-sdk-for-ruby)
 * Update dependencies for compatibility with latest chef-client and chef-provisioning
 
-2014.03.30 - version 0.6.9 (stuartpreston-azure-sdk-for-ruby)
+2015.03.30 - version 0.6.9 (stuartpreston-azure-sdk-for-ruby)
 * Implement fixes for regression issues with filename handling
 
-2014.03.29 - version 0.6.8 (stuartpreston-azure-sdk-for-ruby)
+2015.03.29 - version 0.6.8 (stuartpreston-azure-sdk-for-ruby)
 * Support for accepting certificates in memory (@jkeiser)
 
-2014.03.12 - version 0.6.7 (stuartpreston-azure-sdk-for-ruby)
+2015.03.12 - version 0.6.7 (stuartpreston-azure-sdk-for-ruby)
 * Support for .pfx and .publishsettings as certificate sources
 
-2014.03.09 - version 0.6.6 (stuartpreston-azure-sdk-for-ruby)
+2015.03.09 - version 0.6.6 (stuartpreston-azure-sdk-for-ruby)
 * Support for A10 and A11 Virtual Machine role sizes
 
-2013.03.03 - version 0.6.5 (stuartpreston-azure-sdk-for-ruby)
+2015.03.03 - version 0.6.5 (stuartpreston-azure-sdk-for-ruby)
 * Support for D, DS and G Virtual Machine role sizes
 * Disabling Ruby 1.9 incompatibilities
 * Fix serialization for Add Role/Create Virtual Machines
