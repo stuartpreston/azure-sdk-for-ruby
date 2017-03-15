@@ -28,15 +28,15 @@ Gem::Specification.new do |s|
   s.license     = 'Apache License, Version 2.0'
   s.files       = `git ls-files`.split("\n")
 
-  s.required_ruby_version = '>= 2.0'
+  s.required_ruby_version = '>= 2.1'
 
   s.add_runtime_dependency('nokogiri',   "~> 1.5")
   s.add_runtime_dependency("mime-types", "> 1", "< 4")
-  s.add_runtime_dependency('json', '~> 1.8')
+  s.add_runtime_dependency('json', ">= 1.8", "< 3.0")
   s.add_runtime_dependency('uuid', '~> 2.0')
   s.add_runtime_dependency('systemu', '~> 2.6')
 
-  s.add_development_dependency("rake", '~> 10.0')
+  s.add_development_dependency("rake", '~> 12.0')
   s.add_development_dependency("minitest", "3.5.0")
   s.add_development_dependency('mocha', '~> 1.0')
   s.add_development_dependency('turn', '~> 0.9')
